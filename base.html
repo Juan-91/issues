@@ -28,6 +28,19 @@
                         {% csrf_token %}
                         <input type="submit" class="nav-link" value="Log OUt">
                     </form>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown"
+                            data-bs-display="static" aria-expanded="false">
+                            To do
+                        </button>
+                        {% for issue in to_do_list %}{% endfor %}
+                        <ul class="dropdown-menu dropdown-menu-lg-end">
+                            <li><button class="dropdown-item" type="button">To Do</button></li>
+                            <li><button class="dropdown-item" type="button">In Progress</button></li>
+                            <li><button class="dropdown-item" type="button">Done</button></li>
+                        </ul>
+                    </div>
+
                     {% else %}
                     <a class="nav-link" href="{% url 'signup' %}">Sign Up</a>
                     <a class="nav-link" href="{% url 'login' %}">Log In</a>
