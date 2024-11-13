@@ -1,108 +1,93 @@
 from django.views.generic import(
     ListView,
-    CreateView,
     DetailView,
-    DeleteView,
+    CreateView,
     UpdateView,
+    DeleteView
 )
+from .models import Post, Status
+from django.urls import reverse_lazy
 from django.contrib.auth.mixins import(
     LoginRequiredMixin,
     UserPassesTestMixin
 )
-from django.urls import reverse_lazy
-from .models import Issue, Status
-from accounts.models import CustomUser, Role, Team
 
+class PostListView(LoginRequiredMixin, ListView):
+    template_name = "posts/list.html"
+    model = Post
 
-class IssueListView(LoginRequiredMixin, ListView):
-    template_name = "issues/list.html"
-    model = Issue
-
-    def get_context_data(self, **kwargs):
+    def get_context_dara(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        user = self.request.user()
-        role = Role.objects.get(name="product owner")
-        team_po = (
-            CustomUser.objects
-            .filter(team=user.team)
-            .filter(role=role)
-        )
-        to_do = Status.objects.get(name="to do")
-        context["to_do_list"] = (
-            Issue.objects
-            .filter(status=to_do)
-            .filter(reporter=team_po[0])
-            .order_by("created_on").reverse()
-        )
-        in_progress = Status.objects.get(name="in progress")
-        context("in_progress_list") = (
-            Issue.objects
-            .filter(status=in_progress)
-            .filter(reporter=team_po[0])
-            .order_by("created_on").reverse()
-        )
-        done = Status.objects.get(name="done")
-        context["done_list"] = (
-            Issue.objects
-            .filter(status=done)
-            .filter(reporter=team_po[0])
+        context["post_list"] = (
+            Post.objects
+            .filter(status=Status.objects.get(name="published"))
             .order_by("created_on").reverse()
         )
         return context
     
-class IssueDetailView(LoginRequiredMixin, DetailView):
-    template_name = "issue/detail.html"
-    model = Issue
+class DraftPostListView(LoginRequiredMixin, ListView):
+    template_name = "post/list.html"
+    model = Post
 
-class IssueCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
-    template_name = "issue/new.html"
-    model = Issue
-    fields = [
-        "summary", "description", "assignee",
-        "priority", "status"
-    ]
+    def get_context_data(self, *kwargs):
+        context = super().get_context_data(**kwargs)
+        context["post_list"] = (
+            Post.objects
+            .filter(status=Status.objects.get(name="draft"))
+            .filter(author=self.request.user)
+            .order_by("created_on").reverse()
+        )
+        return context
+        
+class ArchivedPostListView(LoginRequiredMixin, ListView):
+    template_name = "post/list.html"
+    model = Post
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["post_list"] = (
+            Post.objects
+            .filter(status=Status.objects.get(name="archived"))
+            .order_by("created_on").reverse()
+        )
+        return context
+        
+class DetailPostView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    template_name = "posts/detail.html"
+    model = Post
 
     def test_func(self):
-        role = Role.objects.get(name="owner")
-        return self.request.user.role == role
+        post = self.get_object()
+        if post.status.name == "published" or post.status.name == "archived":
+            return True
+        elif post.status.name == "draft" and post.author == self.request.user:
+            return True
+        else:
+            return False
 
-    def from_valid(self, form):
-        form.instance.reporter = self.request.user
+class PostUpdateView(LoginRequiredMixin, UpdateView):
+    template_name = "posts/edit.html"
+    model = Post
+    fields = ["title","subtitle","status","body"]
+
+    def test_func(self):
+        post = self.get_object()
+        return self.request.user == post.author
+
+class PostDeleteView(LoginRequiredMixin, DeleteView):
+    template_name = "posts/delete.html"
+    model = Post
+    success_url = reverse_lazy("post_list")
+
+    def test_func(self):
+        post = self.get_object()
+        return self.request.user == post.author
+
+class PostCreateView(LoginRequiredMixin, CreateView):
+    template_name = "posts/new.html"
+    model = Post
+    fields = ["title","subtitle","status","body"]
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
         return super().form_valid(form)
-
-class IssueUpdateView(LoginRequiredMixin,UserPassesTestMixin, UpdateView):
-    template_name = "issue/edit.html"
-    model = Issue
-    fields = [
-        "summary", "description", "assignee",
-        "priority", "status"
-    ]
-
-    def test_func(self):
-        po_role = Role.objects.get(name="product owner")
-        product_owner = (
-            CustomUser.objects
-            .filter(role=po_role)
-            .filter(team=self.request.user.team)
-        )
-        if product_owner:
-            issue = self.get.object()
-            return issue.reporter == product_owner[0]
-        return False
-
-class IssueDeleteView(LoginRequiredMixin,UserPassesTestMixin, DeleteView):
-    template_name = "issue/delete.html"
-    model = Issue
-    success_url = reverse_lazy("list")
-
-    def test_func(self):
-        po_role = Role.objects.get(name="product owner")
-        product_owner = (
-            CustomUser.objects
-            .filter(role=po_role)
-            .filter(team=self.request.user.team)
-        )
-        if product_owner:
-            issue = self.get.object()
-            return issue.reporter == product_owner[0]
-        return False

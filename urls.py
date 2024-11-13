@@ -1,16 +1,12 @@
 from django.urls import path
-from .views import (
-    IssueListView,
-    IssueDetailView,
-    IssueCreateView,
-    IssueUpdateView,
-    IssueDeleteView
-)
+from posts import views
 
 urlpatterns = [
-    path('', IssueListView.as_view(), name='list'),
-    path('list/', IssueDetailView.as_view(), name='detail'),
-    path('new/', IssueCreateView.as_view(), name='new'),
-    path('<int:pk>/edit/', IssueUpdateView.as_view(), name='edit'),
-    path('<int:pk>/delete/', IssueDeleteView.as_view(), name='delete'),
+    path('', views.PostListView.as_view(), name='published'),
+    path('draft/', views.DraftPostListView.as_view(), name='drafts'),
+    path('archived/', views.ArchivedPostListView.as_view(), name='archived'),
+    path('<int:pk>/', views.DetailPostView.as_view(), name='detail'),
+    path('<int:pk>/edit/', views.PostUpdateView.as_view(), name='edit'),
+    path('<int:pk>/delete/', views.PostDeleteView.as_view(), name='delete'),
+    path('new/', views.PostCreateView.as_view(), name='new'),
 ]
